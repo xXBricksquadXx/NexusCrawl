@@ -1,0 +1,20 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Archival Data & Logs
+*.jsonl
+*.csv
+*.log
+
+# Media Downloads
+media/
+
+# Environment Variables
+.env
