@@ -1,3 +1,4 @@
+import aiosqlite
 import asyncio
 import yt_dlp
 import json
@@ -105,3 +106,60 @@ class YTDLPPipeline:
             print(
                 f"[YT-DLP ERROR] Failed to extract stream from {item.stream_url}: {e}"
             )
+
+
+class SQLitePipeline:
+    def __init__(self, db_path: str = "nexus_database.db"):
+        self.db_path = db_path
+        self._db_initialized = False
+
+    async def _init_db(self):
+        """Creates the database schema if it doesn't exist."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS civic_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT,
+                    url TEXT,
+                    dataset_id TEXT,
+                    image_url TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS table_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    table_id TEXT,
+                    url TEXT,
+                    row_data TEXT, 
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await db.commit()
+        self._db_initialized = True
+
+    async def process_item(self, item: BaseModel):
+        """Routes the Pydantic models into the correct SQL tables."""
+        if not self._db_initialized:
+            await self._init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            if item.__class__.__name__ == "CivicItem":
+                await db.execute(
+                    "INSERT INTO civic_records (title, url, dataset_id, image_url) VALUES (?, ?, ?, ?)",
+                    (
+                        item.title,
+                        item.url,
+                        getattr(item, "dataset_id", None),
+                        getattr(item, "image_url", None),
+                    ),
+                )
+                print(f"[SQLITE] Logged Civic Record: {item.title}")
+            elif item.__class__.__name__ == "TableRowItem":
+                import json
+
+                await db.execute(
+                    "INSERT INTO table_records (table_id, url, row_data) VALUES (?, ?, ?)",
+                    (item.table_id, item.url, json.dumps(item.row_data)),
+                )
+                print(f"[SQLITE] Logged Table Row for ID: {item.table_id}")
+            await db.commit()

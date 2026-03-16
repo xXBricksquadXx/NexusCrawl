@@ -4,3 +4,4 @@ aiofiles>=23.2.0
 selectolax>=0.3.2
 playwright>=1.42.0
 yt-dlp>=2023.12.30
+aiosqlite>=0.20.0

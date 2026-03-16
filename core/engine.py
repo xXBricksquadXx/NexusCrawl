@@ -16,6 +16,7 @@ from core.pipeline import (
     AsyncMediaPipeline,
     SourceCodePipeline,
     YTDLPPipeline,
+    SQLitePipeline,
 )
 from core.middleware import UserAgentMiddleware, RetryMiddleware
 
@@ -34,6 +35,7 @@ class Engine:
         self.retry_middleware = RetryMiddleware(max_retries=3)
         self.source_pipeline = SourceCodePipeline()
         self.ytdlp_pipeline = YTDLPPipeline()
+        self.sqlite_pipeline = SQLitePipeline()
 
     async def start(self):
         print(f"[ENGINE] Starting crawl for spider: {self.spider.name}")
@@ -104,6 +106,7 @@ class Engine:
                             self.items_scraped_count += 1
                         elif isinstance(output, BaseModel):
                             await self.pipeline.process_item(output)
+                            await self.sqlite_pipeline.process_item(output)
                             self.items_scraped_count += 1
                             if getattr(output, "image_url", None):
                                 await self.media_pipeline.download_image(
