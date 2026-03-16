@@ -96,6 +96,28 @@ _Target a specific document to verify the layout heuristics before executing a m
 python parsers/pdf_parser.py --file "FY 24-25 Budget.pdf"
 ```
 
+## Query the Intelligence Vault (Mass Text Search)
+
+_Scan the extracted text of all downloaded documents simultaneously for specific keywords, returning a 60-character context window around the target phrase_:
+
+```bash
+python search_intel.py --keyword "Opioid"
+```
+
+```bash
+python search_intel.py --keyword "Approved"
+```
+
+## Export Intelligence to CSV for Visualization
+
+Dump the relational SQLite data into flat `.csv` files for Excel/Tableau visualization and financial delta calculations:
+
+```bash
+python export_csv.py
+```
+
+_(This generates financial_audit_export.csv and raw_text_export.csv in the root directory)._
+
 ---
 
 # Data Output Structure
@@ -156,12 +178,31 @@ Cloned website source code organized by target domain and file type:
 
 ---
 
-# Project Purpose
+# Operational Use Cases
 
-NexusCrawl is designed for large-scale information discovery and preservation workflows including:
+NexusCrawl is designed to automate the heavy lifting of civic audits and web reconnaissance. Here is how the pipelines stack to create actionable intelligence:
 
-- Civic audit investigations
-- Government data discovery
-- Media archival
-- Web infrastructure reconnaissance
-- Dataset extraction and preservation
+### 1. The Fiscal Audit (FOIA Hunter + PDF Exploiter)
+
+**Objective:** Compare year-over-year county budget allocations without manually reading hundreds of pages.
+**Execution:**
+
+1. Run `foia_hunter` against the local government portal to strip all hidden PDFs (Budgets, Strategic Plans, Minutes).
+2. Execute the `pdf_parser.py` offline to rip the unstructured gridlines and dump the raw account codes and dollar amounts into the SQLite database.
+3. Export the database to CSV to instantly visualize anomalies or missing funds between FY24 and FY25.
+
+### 2. The Legislative Tracker (Intelligence Search)
+
+**Objective:** Track the timeline of a specific contract, grant, or committee vote across a massive dump of unstandardized meeting minutes.
+**Execution:**
+
+1. Run the mass extraction parser to dump the raw text of all PDFs into `parsed_intel.db`.
+2. Execute `search_intel.py --keyword "Agri-Park"` to instantly pull every motion, second, and approval related to the project, tagged with the exact source file and page number.
+
+### 3. The Digital Preservation (Web Recon + Media Archive)
+
+**Objective:** Clone a target's web infrastructure or archive streaming evidence before it is taken offline.
+**Execution:**
+
+1. Run `web_recon` to clone the HTML/CSS/JS architecture locally.
+2. Run `media_archive` to intercept the HLS/Blob streams via `yt-dlp` and stitch them into permanent local `.mp4` files.
