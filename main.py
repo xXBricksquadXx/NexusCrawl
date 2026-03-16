@@ -5,7 +5,7 @@ from spiders.civic_spider import CivicAuditSpider
 from spiders.video_spider import MediaArchiveSpider
 from spiders.table_spider import TableDataSpider
 SPIDER_REGISTRY = {
-    "book_archive": CivicAuditSpider,
+    "foia_hunter": CivicAuditSpider,
     "media_archive": MediaArchiveSpider,
     "table_miner": TableDataSpider
 }

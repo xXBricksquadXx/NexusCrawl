@@ -3,6 +3,7 @@ import aiofiles
 import os
 import httpx
 from pydantic import BaseModel
+
 class JsonLinesPipeline:
     def __init__(self, filepath: str = "archive.jsonl"):
         self.filepath = filepath
@@ -28,7 +29,7 @@ class AsyncMediaPipeline:
         safe_filename = "".join([c for c in filename if c.isalpha() or c.isdigit() or c in ' -_']).rstrip() + ext
         filepath = os.path.join(self.media_dir, safe_filename)
         if os.path.exists(filepath): return 
-        async with httpx.AsyncClient(timeout=30.0) as client: 
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client: 
             try:
                 async with client.stream('GET', media_url) as response:
                     response.raise_for_status()
