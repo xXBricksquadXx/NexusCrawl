@@ -1,26 +1,37 @@
-# Python caches
+# ==========================================
+# NexusCrawl: Exclusion Protocol (.gitignore)
+# ==========================================
+
+# 1. Databases (Block all raw intel and SQLite binaries)
+*.db
+*.sqlite
+*.sqlite3
+nexus_database.db
+parsed_intel.db
+
+# 2. Scraped Data & Archives (Block the payloads)
+media/
+recon_vault/
+*.jsonl
+civic_audit_data.jsonl
+archive.jsonl
+
+# 3. Environment Variables & Secrets
+.env
+.venv/
+venv/
+env/
+
+# 4. Python Cache & Compilation
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual Environments
-venv/
-.venv/
-env/
+# 5. IDE & OS Artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 
-# Archival Data & Logs
-*.jsonl
-*.csv
-*.log
-
-# Media Downloads
-media/
-
-# Recon Vault
-recon_vault/
-
-# Environment Variables
-.env
-
-#SQL DB
-nexus_database.db
+# 6. Temporary / Scratchpad Scripts
+inspect_*.py

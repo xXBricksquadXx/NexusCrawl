@@ -135,6 +135,28 @@ class SQLitePipeline:
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS budget_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_file TEXT,
+                    department TEXT,
+                    account_code TEXT,
+                    description TEXT,
+                    amount TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS meeting_votes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_file TEXT,
+                    date TEXT,
+                    motion_by TEXT,
+                    seconded_by TEXT,
+                    outcome TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             await db.commit()
         self._db_initialized = True
 
@@ -143,7 +165,8 @@ class SQLitePipeline:
         if not self._db_initialized:
             await self._init_db()
         async with aiosqlite.connect(self.db_path) as db:
-            if item.__class__.__name__ == "CivicItem":
+            class_name = item.__class__.__name__
+            if class_name == "CivicItem":
                 await db.execute(
                     "INSERT INTO civic_records (title, url, dataset_id, image_url) VALUES (?, ?, ?, ?)",
                     (
@@ -154,7 +177,7 @@ class SQLitePipeline:
                     ),
                 )
                 print(f"[SQLITE] Logged Civic Record: {item.title}")
-            elif item.__class__.__name__ == "TableRowItem":
+            elif class_name == "TableRowItem":
                 import json
 
                 await db.execute(
@@ -162,4 +185,78 @@ class SQLitePipeline:
                     (item.table_id, item.url, json.dumps(item.row_data)),
                 )
                 print(f"[SQLITE] Logged Table Row for ID: {item.table_id}")
+            elif class_name == "BudgetLineItem":
+                await db.execute(
+                    "INSERT INTO budget_items (source_file, department, account_code, description, amount) VALUES (?, ?, ?, ?, ?)",
+                    (
+                        item.source_file,
+                        item.department,
+                        item.account_code,
+                        item.description,
+                        item.amount,
+                    ),
+                )
+                print(f"[SQLITE] Logged Budget Item: {item.account_code} -> DB")
+            elif class_name == "MeetingVote":
+                await db.execute(
+                    "INSERT INTO meeting_votes (source_file, date, motion_by, seconded_by, outcome) VALUES (?, ?, ?, ?, ?)",
+                    (
+                        item.source_file,
+                        item.date,
+                        item.motion_by,
+                        item.seconded_by,
+                        item.outcome,
+                    ),
+                )
+            await db.commit()
+
+
+class ParsedIntelPipeline:
+    def __init__(self, db_path: str = "parsed_intel.db"):
+        self.db_path = db_path
+        self._db_initialized = False
+
+    async def _init_db(self):
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS extracted_tables (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_file TEXT,
+                    page_number INTEGER,
+                    table_index INTEGER,
+                    row_data TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS extracted_text (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_file TEXT,
+                    page_number INTEGER,
+                    content TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await db.commit()
+        self._db_initialized = True
+
+    async def process_item(self, item: BaseModel):
+        if not self._db_initialized:
+            await self._init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            if item.__class__.__name__ == "ParsedTable":
+                await db.execute(
+                    "INSERT INTO extracted_tables (source_file, page_number, table_index, row_data) VALUES (?, ?, ?, ?)",
+                    (
+                        item.source_file,
+                        item.page_number,
+                        item.table_index,
+                        item.row_data,
+                    ),
+                )
+            elif item.__class__.__name__ == "ParsedText":
+                await db.execute(
+                    "INSERT INTO extracted_text (source_file, page_number, content) VALUES (?, ?, ?)",
+                    (item.source_file, item.page_number, item.content),
+                )
             await db.commit()
