@@ -7,7 +7,8 @@ from typing import Callable, Optional
 class Request:
     url: str
     callback: Callable
-
+    render_js: bool = False
+    
 # --- EXTRACTION SCHEMAS ---
 class CivicItem(BaseModel):
     url: str

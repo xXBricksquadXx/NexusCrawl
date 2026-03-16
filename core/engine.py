@@ -1,5 +1,7 @@
 import asyncio
 import httpx
+from core.middleware import UserAgentMiddleware, RetryMiddleware
+from playwright.async_api import async_playwright 
 from pydantic import BaseModel  
 from models import Request, CivicItem, TableRowItem, VideoItem
 from core.middleware import UserAgentMiddleware
@@ -13,15 +15,23 @@ class Engine:
         self.pipeline = JsonLinesPipeline("civic_audit_data.jsonl") 
         self.items_scraped_count = 0 
         self.media_pipeline = AsyncMediaPipeline()
+        self.pw = None
+        self.browser = None
+        self.retry_middleware = RetryMiddleware(max_retries=3)
     async def start(self):
         print(f"[ENGINE] Starting crawl for spider: {self.spider.name}")
+        default_render_js = getattr(self.spider, 'render_js', False)
         for url in self.spider.start_urls:
-            await self.queue.put(Request(url=url, callback=self.spider.parse))
+            await self.queue.put(Request(url=url, callback=self.spider.parse, render_js=default_render_js))
+        self.pw = await async_playwright().start()
+        self.browser = await self.pw.chromium.launch(headless=True)
         async with httpx.AsyncClient(timeout=10.0) as client:
             workers = [asyncio.create_task(self.worker(client)) for _ in range(self.semaphore._value)]
             await self.queue.join()  
             for w in workers:
                 w.cancel() 
+        await self.browser.close()
+        await self.pw.stop()
         print(f"[ENGINE] Crawl complete. Extracted {self.items_scraped_count} items.")
     async def worker(self, client: httpx.AsyncClient):
         while True:
@@ -29,10 +39,25 @@ class Engine:
             async with self.semaphore:
                 try:
                     headers = self.middleware.process_request({})
-                    response = await client.get(request.url, headers=headers)
-                    response.raise_for_status()
-                    print(f"[FETCH] [{response.status_code}] {request.url}")
-                    spider_output = request.callback(response.text, request.url)
+                    if request.render_js:
+                        print(f"[PLAYWRIGHT] Booting headless tab for: {request.url}")
+                        page = await self.browser.new_page(extra_http_headers=headers)
+                        response = await page.goto(request.url, wait_until="networkidle", timeout=30000)
+                        if hasattr(self.spider, 'interact_with_page'):
+                            await self.spider.interact_with_page(page)
+                        html = await page.content()
+                        status_code = response.status if response else 0
+                        await page.close()
+                        print(f"[FETCH-JS] [{status_code}] {request.url}")
+                    else:
+                        response = await self.retry_middleware.execute_with_retry(
+                            request=request, 
+                            client=client, 
+                            headers=headers
+                        )
+                        html = response.text
+                        print(f"[FETCH-HTTPX] [{response.status_code}] {request.url}")
+                    spider_output = request.callback(html, request.url)
                     if spider_output:
                         for output in spider_output:
                             if isinstance(output, Request):
