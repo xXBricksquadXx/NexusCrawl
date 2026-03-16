@@ -17,11 +17,10 @@ NexusCrawl utilizes a highly concurrent, hybrid event loop:
 
 ### Resiliency & Data Pipelines
 
-- **Exponential Backoff Shield:**
-  A built-in `RetryMiddleware` that intercepts HTTP `429` (Rate Limit) and HTTP `403` (Forbidden) server drops, pauses the specific worker, and gracefully retries the connection without killing the primary crawl.
-
-- **Asynchronous File Streaming:**
-  Utilizes `aiofiles` to prevent desktop RAM bottlenecks. Data is streamed directly to disk whether it is a `.jsonl` dictionary string, a cloned `.css` file, or a 2GB `.mp4` binary.
+- **Exponential Backoff Shield:** A built-in `RetryMiddleware` that intercepts HTTP `429` (Rate Limit) and HTTP `403` (Forbidden) server drops, pauses the specific worker, and gracefully retries the connection without killing the primary crawl.
+- **Asynchronous File Streaming:** Utilizes `aiofiles` to prevent desktop RAM bottlenecks. Data is streamed directly to disk whether it is a `.jsonl` dictionary string, a cloned `.css` file, or a massive binary.
+- **Structured SQL Exporter:** Automatically routes extracted datasets into a local `nexus_database.db` SQLite database, wrapping complex row data in queryable JSON strings for immediate analysis.
+- **Stream Interceptor:** Offloads HLS/Blob streams to a background `yt-dlp` threading pipeline, automatically utilizing FFmpeg to decrypt and stitch streaming video chunks into native `.mp4` files.
 
 ---
 
@@ -48,6 +47,14 @@ pip install -r requirements.txt
 
 ```bash
 playwright install chromium
+```
+
+## 3. Install FFmpeg (Required for Media Archival/Stream Stitching)
+
+_Windows (via winget)_:
+
+```bash
+winget install Gyan.FFmpeg
 ```
 
 ---
@@ -81,6 +88,7 @@ python main.py --spider web_recon --url "https://target-domain.com"
 Running the framework will automatically generate the following local directories based on the pipelines engaged:
 
 ```
+/nexus_database.db
 /civic_audit_data.jsonl
 /media/
 /recon_vault/
