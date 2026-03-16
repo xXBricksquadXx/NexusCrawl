@@ -94,6 +94,10 @@ Running the framework will automatically generate the following local directorie
 /recon_vault/
 ```
 
+### `/nexus_database.db`
+
+Relational SQLite database containing structured, queryable extractions (`civic_records, table_records`).
+
 ### `/civic_audit_data.jsonl`
 
 Flat JSON Lines file for structured table data and text extraction.
@@ -106,6 +110,7 @@ Stores binary files such as:
 - Videos
 - PDFs
 - CSV datasets
+- `/media/streams/`: High-resolution `.mp4` files intercepted and stitched via `yt-dlp`.
 
 ### `/recon_vault/`
 
