@@ -19,7 +19,8 @@ NexusCrawl utilizes a highly concurrent, hybrid event loop:
 
 - **Exponential Backoff Shield:** A built-in `RetryMiddleware` that intercepts HTTP `429` (Rate Limit) and HTTP `403` (Forbidden) server drops, pauses the specific worker, and gracefully retries the connection without killing the primary crawl.
 - **Asynchronous File Streaming:** Utilizes `aiofiles` to prevent desktop RAM bottlenecks. Data is streamed directly to disk whether it is a `.jsonl` dictionary string, a cloned `.css` file, or a massive binary.
-- **Structured SQL Exporter:** Automatically routes extracted datasets into a local `nexus_database.db` SQLite database, wrapping complex row data in queryable JSON strings for immediate analysis.
+- **Dual-Routing SQL Exporter:** Automatically routes extracted datasets into a local `nexus_database.db` SQLite database. It handles both raw web payloads (JSON row data) and refined intelligence models (like parsed budget lines and meeting votes) simultaneously.
+- **Structural PDF Exploiter:** An offline, regex-hardened parser (`pdfplumber`) that bypasses phantom gridlines and watermark interference to rip tabular financial data and unstructured meeting minutes directly from downloaded government PDFs.
 - **Stream Interceptor:** Offloads HLS/Blob streams to a background `yt-dlp` threading pipeline, automatically utilizing FFmpeg to decrypt and stitch streaming video chunks into native `.mp4` files.
 
 ---
@@ -81,14 +82,29 @@ python main.py --spider foia_hunter --url "https://www.justice.gov/oip/foia-libr
 python main.py --spider web_recon --url "https://target-domain.com"
 ```
 
+## Extract Intelligence from Downloaded PDFs (Offline Parsing)
+
+Run the mass-exploitation parser across all PDFs in the `/media` directory to extract financial ledgers and meeting minutes:
+
+```bash
+python parsers/pdf_parser.py
+```
+
+_Target a specific document to verify the layout heuristics before executing a mass extraction:_
+
+```bash
+python parsers/pdf_parser.py --file "FY 24-25 Budget.pdf"
+```
+
 ---
 
 # Data Output Structure
 
 Running the framework will automatically generate the following local directories based on the pipelines engaged:
 
-```
+```text
 /nexus_database.db
+/parsed_intel.db
 /civic_audit_data.jsonl
 /media/
 /recon_vault/
@@ -96,7 +112,21 @@ Running the framework will automatically generate the following local directorie
 
 ### `/nexus_database.db`
 
-Relational SQLite database containing structured, queryable extractions (`civic_records, table_records`).
+Relational SQLite database containing structured, queryable extractions:
+
+- `civic_records` & `table_records` (Live crawler payloads)
+
+- `budget_items` & `meeting_votes` (Refined intelligence extracted from PDFs)
+
+### `/parsed_intel.db`
+
+Secondary SQLite database housing bulk analytical data ripped from documents:
+
+- `extracted_tables` (Raw tabular matrices wrapped in JSON)
+
+- `extracted_text` (Raw, searchable paragraph text for policy and agenda tracking)
+
+/civic_audit_data.jsonl
 
 ### `/civic_audit_data.jsonl`
 
