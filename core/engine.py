@@ -3,8 +3,20 @@ import asyncio
 import httpx
 from playwright.async_api import async_playwright
 from pydantic import BaseModel
-from models import Request, CivicItem, TableRowItem, VideoItem, SourceCodeItem
-from core.pipeline import JsonLinesPipeline, AsyncMediaPipeline, SourceCodePipeline
+from models import (
+    Request,
+    CivicItem,
+    TableRowItem,
+    VideoItem,
+    SourceCodeItem,
+    StreamItem,
+)
+from core.pipeline import (
+    JsonLinesPipeline,
+    AsyncMediaPipeline,
+    SourceCodePipeline,
+    YTDLPPipeline,
+)
 from core.middleware import UserAgentMiddleware, RetryMiddleware
 
 
@@ -21,6 +33,7 @@ class Engine:
         self.browser = None
         self.retry_middleware = RetryMiddleware(max_retries=3)
         self.source_pipeline = SourceCodePipeline()
+        self.ytdlp_pipeline = YTDLPPipeline()
 
     async def start(self):
         print(f"[ENGINE] Starting crawl for spider: {self.spider.name}")
@@ -85,6 +98,9 @@ class Engine:
                             await self.queue.put(output)
                         elif isinstance(output, SourceCodeItem):
                             await self.source_pipeline.process_item(output)
+                            self.items_scraped_count += 1
+                        elif isinstance(output, StreamItem):
+                            await self.ytdlp_pipeline.process_item(output)
                             self.items_scraped_count += 1
                         elif isinstance(output, BaseModel):
                             await self.pipeline.process_item(output)

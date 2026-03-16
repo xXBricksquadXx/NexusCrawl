@@ -31,3 +31,7 @@ class SourceCodeItem(BaseModel):
     file_name: str
     content: str
     sub_dir: str
+
+class StreamItem(BaseModel):
+    title: str
+    stream_url: str

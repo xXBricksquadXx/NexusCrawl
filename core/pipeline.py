@@ -1,3 +1,5 @@
+import asyncio
+import yt_dlp
 import json
 import aiofiles
 import os
@@ -74,3 +76,32 @@ class SourceCodePipeline:
         async with aiofiles.open(filepath, mode="w", encoding="utf-8") as f:
             await f.write(item.content)
         print(f"[RECON PIPELINE] Cloned: {item.sub_dir}/{safe_filename}")
+
+
+class YTDLPPipeline:
+    def __init__(self, media_dir: str = "media/streams"):
+        self.media_dir = media_dir
+        os.makedirs(self.media_dir, exist_ok=True)
+
+    def _sync_download(self, url: str):
+        """Synchronous yt-dlp execution block"""
+        ydl_opts = {
+            "outtmpl": f"{self.media_dir}/%(title)s.%(ext)s",
+            "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "quiet": True,
+            "no_warnings": True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            print(f"[YT-DLP] Intercepting stream for: {url}")
+            ydl.download([url])
+
+    async def process_item(self, item: BaseModel):
+        if not getattr(item, "stream_url", None):
+            return
+        try:
+            await asyncio.to_thread(self._sync_download, item.stream_url)
+            print(f"[PIPELINE] Stream successfully stitched and archived: {item.title}")
+        except Exception as e:
+            print(
+                f"[YT-DLP ERROR] Failed to extract stream from {item.stream_url}: {e}"
+            )
