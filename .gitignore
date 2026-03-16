@@ -21,3 +21,6 @@ recon_vault/
 
 # Environment Variables
 .env
+
+#SQL DB
+nexus_database.db

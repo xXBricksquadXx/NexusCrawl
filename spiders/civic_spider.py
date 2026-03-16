@@ -1,7 +1,7 @@
 import inspect
 import httpx
 from selectolax.parser import HTMLParser
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from spiders.base import BaseSpider
 from models import Request, CivicItem
 
@@ -10,10 +10,16 @@ class CivicAuditSpider(BaseSpider):
     name = "foia_hunter"
     start_urls = []
 
-    def __init__(self):
+    def __init__(self, max_depth=3):
         self.visited_urls = set()
+        self.url_depths = {}
+        self.max_depth = max_depth
+        self.allowed_domain = None
 
     async def parse(self, html: str, current_url: str):
+        if not self.allowed_domain:
+            self.allowed_domain = urlparse(current_url).netloc.replace("www.", "")
+        current_depth = self.url_depths.get(current_url, 0)
         tree = HTMLParser(html)
         links = tree.css("a")
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -22,9 +28,14 @@ class CivicAuditSpider(BaseSpider):
                 if not href or href.startswith(("javascript:", "mailto:", "#")):
                     continue
                 absolute_url = urljoin(current_url, href)
+                parsed_url = urlparse(absolute_url)
+                domain = parsed_url.netloc.replace("www.", "")
+                if domain != self.allowed_domain:
+                    continue
                 if (
                     "download" in absolute_url.lower()
                     or "file" in absolute_url.lower()
+                    or "/wp-content/uploads/" in absolute_url.lower()
                     or absolute_url.endswith((".pdf", ".csv", ".xlsx", ".zip"))
                 ):
                     if absolute_url in self.visited_urls:
@@ -45,7 +56,16 @@ class CivicAuditSpider(BaseSpider):
                             )
                     except Exception:
                         pass
-                elif "/oip/" in absolute_url and absolute_url not in self.visited_urls:
-                    self.visited_urls.add(absolute_url)
-                    print(f"[SCOUT] Navigating deeper: {absolute_url}")
-                    yield Request(url=absolute_url, callback=self.parse)
+                elif absolute_url not in self.visited_urls:
+                    if (
+                        "tribe-bar-date" in absolute_url.lower()
+                        or "?month=" in absolute_url.lower()
+                    ):
+                        continue
+                    if current_depth < self.max_depth:
+                        self.visited_urls.add(absolute_url)
+                        self.url_depths[absolute_url] = current_depth + 1
+                        print(
+                            f"[SCOUT] Navigating deeper (Depth {current_depth + 1}): {absolute_url}"
+                        )
+                        yield Request(url=absolute_url, callback=self.parse)
