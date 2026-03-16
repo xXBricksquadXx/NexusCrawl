@@ -25,3 +25,9 @@ class TableRowItem(BaseModel):
     url: str
     table_id: str
     row_data: dict
+
+class SourceCodeItem(BaseModel):
+    url: str
+    file_name: str
+    content: str
+    sub_dir: str

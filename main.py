@@ -4,10 +4,12 @@ from core.engine import Engine
 from spiders.civic_spider import CivicAuditSpider
 from spiders.video_spider import MediaArchiveSpider
 from spiders.table_spider import TableDataSpider
+from spiders.recon_spider import WebReconSpider
 SPIDER_REGISTRY = {
-    "foia_hunter": CivicAuditSpider,
+    "foia_hunter": CivicAuditSpider,     
     "media_archive": MediaArchiveSpider,
-    "table_miner": TableDataSpider
+    "table_miner": TableDataSpider,
+    "web_recon": WebReconSpider       # Newly added
 }
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NexusCrawl: Async Data Mining & Archival Engine")

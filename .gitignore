@@ -16,5 +16,8 @@ env/
 # Media Downloads
 media/
 
+# Recon Vault
+recon_vault/
+
 # Environment Variables
 .env

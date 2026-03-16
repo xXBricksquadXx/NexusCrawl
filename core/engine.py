@@ -3,9 +3,9 @@ import asyncio
 import httpx
 from playwright.async_api import async_playwright 
 from pydantic import BaseModel  
-from models import Request, CivicItem, TableRowItem, VideoItem
+from models import Request, CivicItem, TableRowItem, VideoItem, SourceCodeItem
+from core.pipeline import JsonLinesPipeline, AsyncMediaPipeline, SourceCodePipeline
 from core.middleware import UserAgentMiddleware, RetryMiddleware
-from core.pipeline import JsonLinesPipeline, AsyncMediaPipeline
 
 class Engine:
     def __init__(self, spider, max_concurrency=5):
@@ -19,6 +19,7 @@ class Engine:
         self.pw = None
         self.browser = None
         self.retry_middleware = RetryMiddleware(max_retries=3)
+        self.source_pipeline = SourceCodePipeline()
 
     async def start(self):
         print(f"[ENGINE] Starting crawl for spider: {self.spider.name}")
@@ -87,7 +88,12 @@ class Engine:
                     for output in spider_output:
                         if isinstance(output, Request):
                             await self.queue.put(output)
+                        elif isinstance(output, SourceCodeItem): 
+                            # Route code blocks to the Recon Vault
+                            await self.source_pipeline.process_item(output)
+                            self.items_scraped_count += 1
                         elif isinstance(output, BaseModel): 
+                            # Standard JSONL and Media routing
                             await self.pipeline.process_item(output)
                             self.items_scraped_count += 1
                             if getattr(output, 'image_url', None):

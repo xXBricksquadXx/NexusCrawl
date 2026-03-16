@@ -39,3 +39,19 @@ class AsyncMediaPipeline:
                 print(f"[MEDIA] Archived: {safe_filename}")
             except Exception as e:
                 print(f"[MEDIA ERROR] Failed on {media_url}: {e}")
+class SourceCodePipeline:
+    def __init__(self, base_dir: str = "recon_vault"):
+        self.base_dir = base_dir
+        os.makedirs(self.base_dir, exist_ok=True)
+    async def process_item(self, item: BaseModel):
+        from urllib.parse import urlparse
+        import aiofiles
+        import os
+        domain = urlparse(item.url).netloc.replace('www.', '')
+        target_dir = os.path.join(self.base_dir, domain, item.sub_dir)
+        os.makedirs(target_dir, exist_ok=True)
+        safe_filename = "".join([c for c in item.file_name if c.isalnum() or c in ' .-_']).rstrip()
+        filepath = os.path.join(target_dir, safe_filename)
+        async with aiofiles.open(filepath, mode='w', encoding='utf-8') as f:
+            await f.write(item.content)
+        print(f"[RECON PIPELINE] Cloned: {item.sub_dir}/{safe_filename}")
