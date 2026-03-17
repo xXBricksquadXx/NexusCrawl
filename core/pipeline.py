@@ -5,6 +5,7 @@ import json
 import aiofiles
 import os
 import httpx
+import hashlib
 from pydantic import BaseModel
 
 
@@ -36,12 +37,11 @@ class AsyncMediaPipeline:
         from urllib.parse import urlparse
 
         ext = os.path.splitext(urlparse(media_url).path)[1] or ".bin"
-        safe_filename = (
-            "".join(
-                [c for c in filename if c.isalpha() or c.isdigit() or c in " -_"]
-            ).rstrip()
-            + ext
-        )
+        url_hash = hashlib.md5(media_url.encode()).hexdigest()[:6]
+        base_name = "".join(
+            [c for c in filename if c.isalpha() or c.isdigit() or c in " -_"]
+        ).rstrip()
+        safe_filename = f"{base_name}_{url_hash}{ext}"
         filepath = os.path.join(self.media_dir, safe_filename)
         if os.path.exists(filepath):
             return

@@ -53,6 +53,13 @@ class CivicAuditSpider(BaseSpider):
                         continue
                     title = await link.inner_text()
                     title = title.strip() if title else "Unnamed_Document"
+                    page_slug = current_url.strip("/").split("/")[-1]
+                    page_slug = page_slug if len(page_slug) >= 3 else "root_page"
+                    generic_terms = ["here", "minutes", "agenda", "download", "link"]
+                    if title.lower() in generic_terms or len(title) < 5:
+                        filename = f"{page_slug}_{title}"
+                    else:
+                        filename = title
                     absolute_url = urljoin(current_url, href)
                     parsed_url = urlparse(absolute_url)
                     domain = parsed_url.netloc.replace("www.", "")
