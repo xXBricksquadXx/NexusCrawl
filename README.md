@@ -108,6 +108,21 @@ python search_intel.py --keyword "Opioid"
 python search_intel.py --keyword "Approved"
 ```
 
+## Generate an Executive Threat Matrix (Automated Audit)
+
+Scan the parsed intelligence database for high-value threat indicators (e.g., fraud, misappropriation, malfeasance, deficit) and automatically generate a formatted Markdown or CSV briefing. You can run a global sweep or target a specific municipality.
+
+```bash
+# Target a specific county and widen the context window to 600 characters
+python intel_summary.py --target "Giles" --format md --context 600
+```
+
+# Execute a global sweep across all extracted files and export to CSV
+
+```bash
+python intel_summary.py --format csv
+```
+
 ## Export Intelligence to CSV for Visualization
 
 Dump the relational SQLite data into flat `.csv` files for Excel/Tableau visualization and financial delta calculations:
@@ -206,3 +221,12 @@ NexusCrawl is designed to automate the heavy lifting of civic audits and web rec
 
 1. Run `web_recon` to clone the HTML/CSS/JS architecture locally.
 2. Run `media_archive` to intercept the HLS/Blob streams via `yt-dlp` and stitch them into permanent local `.mp4` files.
+
+### 4. The Automated Threat Matrix (Intel Summary)
+
+**Objective:** Instantly locate instances of fraud, malfeasance, or unauthorized spending across thousands of audit reports without manual reading.
+**Execution:**
+
+1. Run `intel_summary.py` against the `parsed_intel.db` to scan for predefined legal and financial threat indicators.
+2. Pass the `--target` flag to isolate a specific county or department.
+3. Output a structured Executive Briefing detailing the exact file, page, and paragraph context of the anomaly.
