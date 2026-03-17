@@ -101,11 +101,11 @@ python parsers/pdf_parser.py --file "FY 24-25 Budget.pdf"
 _Scan the extracted text of all downloaded documents simultaneously for specific keywords, returning a 60-character context window around the target phrase_:
 
 ```bash
-python search_intel.py --keyword "Opioid"
+python scripts/search_intel.py --keyword "Opioid"
 ```
 
 ```bash
-python search_intel.py --keyword "Approved"
+python scripts/search_intel.py --keyword "Approved"
 ```
 
 ## Generate an Executive Threat Matrix (Automated Audit)
@@ -114,13 +114,12 @@ Scan the parsed intelligence database for high-value threat indicators (e.g., fr
 
 ```bash
 # Target a specific county and widen the context window to 600 characters
-python intel_summary.py --target "Giles" --format md --context 600
+python scripts/intel_summary.py --target "Giles" --format md --context 600
 ```
 
-# Execute a global sweep across all extracted files and export to CSV
-
 ```bash
-python intel_summary.py --format csv
+# Execute a global sweep across all extracted files and export to CSV
+python scripts/intel_summary.py --format csv
 ```
 
 ## Export Intelligence to CSV for Visualization
@@ -128,7 +127,7 @@ python intel_summary.py --format csv
 Dump the relational SQLite data into flat `.csv` files for Excel/Tableau visualization and financial delta calculations:
 
 ```bash
-python export_csv.py
+python scripts/export_csv.py
 ```
 
 _(This generates financial_audit_export.csv and raw_text_export.csv in the root directory)._

@@ -34,4 +34,4 @@ __pycache__/
 Thumbs.db
 
 # 6. Temporary / Scratchpad Scripts
-inspect_*.py
+#inspect_*.py
