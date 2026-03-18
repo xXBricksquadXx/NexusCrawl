@@ -16,18 +16,18 @@ client = instructor.from_openai(
     mode=instructor.Mode.JSON,
 )
 
-# --- PYDANTIC DEFAULTS ADDED ---
-# This prevents the script from crashing if the LLM gets lazy and drops empty arrays
+# --- THE KEVLAR SCHEMA ---
+# ALL text fields are now Optional. If the AI explicitly writes `null` into the JSON, Pydantic will allow it to pass.
 class RollCallVote(BaseModel):
     resolution_id: Optional[str] = Field(default=None, description="Resolution ID or null if none.")
-    subject: str = Field(default="Unknown Subject", description="Summary of the vote.")
+    subject: Optional[str] = Field(default="Unknown Subject", description="Summary of the vote.")
     motion_by: Optional[str] = Field(default="Unknown", description="Exact name of the person who made the motion. Do NOT carry over names.")
     seconded_by: Optional[str] = Field(default="Unknown", description="Exact name of the person who seconded.")
     ayes: List[str] = Field(default=[], description="List of names voting Aye.")
     nays: List[str] = Field(default=[], description="List of names voting No. MUST be empty if none.")
     abstains: List[str] = Field(default=[], description="List of names who abstained.")
     absent: List[str] = Field(default=[], description="List of absent names.")
-    outcome: str = Field(default="Unknown", description="The final result (e.g., 'CARRIED', 'FAILED').")
+    outcome: Optional[str] = Field(default="Unknown", description="The final result (e.g., 'CARRIED', 'FAILED').")
 
 class PageIntelligence(BaseModel):
     votes: List[RollCallVote] = Field(default=[], description="Extract distinct votes. Return empty array if no motions exist.")
@@ -36,15 +36,12 @@ def detonate_nuke(target_file=None, target_page=None):
     conn = sqlite3.connect("parsed_intel.db")
     cursor = conn.cursor()
     
-    # --- STATE TRACKER MIGRATION ---
-    # Seamlessly add the tracking column to existing database if it doesn't exist
     try:
         cursor.execute("ALTER TABLE extracted_text ADD COLUMN ai_processed INTEGER DEFAULT 0")
         conn.commit()
     except sqlite3.OperationalError:
-        pass # Column already exists
+        pass 
     
-    # --- THE SNIPER QUERY ---
     query = """
         SELECT id, source_file, page_number, content 
         FROM extracted_text 
@@ -54,7 +51,6 @@ def detonate_nuke(target_file=None, target_page=None):
     """
     params = []
     
-    # If targeting a specific file/page, append constraints
     if target_file:
         query += " AND source_file = ?"
         params.append(target_file)
@@ -62,7 +58,6 @@ def detonate_nuke(target_file=None, target_page=None):
         query += " AND page_number = ?"
         params.append(target_page)
         
-    # If mass-running, ONLY target pages that haven't successfully processed yet
     if not target_file and not target_page:
         query += " AND (ai_processed = 0 OR ai_processed IS NULL)"
         
@@ -88,25 +83,37 @@ def detonate_nuke(target_file=None, target_page=None):
             intel = client.chat.completions.create(
                 model="llama3.2", 
                 response_model=PageIntelligence,
-                max_tokens=800, 
+                max_tokens=2000, # <-- Leash loosened for high-density pages
                 max_retries=0, 
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a forensic parliamentary auditor. Isolate voting events. Do NOT carry over names from previous votes. Return empty votes array if no motions exist. IMPORTANT: Return a JSON object with exactly ONE root key called 'votes'. Do NOT wrap the output in a 'pageIntelligence' key.",
+                        "content": (
+                            "You are a forensic parliamentary auditor. Isolate voting events. "
+                            "KILL LIST: Completely ignore Invocations, Pledges of Allegiance, Prayers, Public Comments, and Announcements. "
+                            "Only extract events that involve a clear motion, second, and a definitive pass/fail outcome. "
+                            "Do NOT carry over names from previous votes. Return empty votes array if no valid motions exist. "
+                            "IMPORTANT: Return a JSON object with exactly ONE root key called 'votes'. Do NOT wrap the output in a 'pageIntelligence' key."
+                        )
                     },
                     {"role": "user", "content": safe_content},
                 ],
             )
             
             if not intel.votes:
-                print("  -> [CLEAR] No distinct votes found on this page.")
+                print("  -> [CLEAR] No distinct votes found on this page. (Noise bypassed)")
                 
             for vote in intel.votes:
-                print(f"  -> Resolution: {vote.resolution_id} | Subject: {vote.subject}")
-                print(f"  -> Motion: {vote.motion_by} | Second: {vote.seconded_by}")
+                # Handle nulls safely in Python before printing
+                safe_subject = vote.subject or "Unknown Subject"
+                safe_outcome = (vote.outcome or "Unknown").upper()
+                safe_motion = vote.motion_by or "Unknown"
+                safe_second = vote.seconded_by or "Unknown"
+
+                print(f"  -> Resolution: {vote.resolution_id} | Subject: {safe_subject}")
+                print(f"  -> Motion: {safe_motion} | Second: {safe_second}")
                 print(f"  -> Ayes ({len(vote.ayes)}) | Nays ({len(vote.nays)}) | Abstains ({len(vote.abstains)})")
-                print(f"  -> Outcome: {vote.outcome.upper()}")
+                print(f"  -> Outcome: {safe_outcome}")
                 
                 vault_cursor.execute("""
                     INSERT INTO meeting_votes 
@@ -114,18 +121,17 @@ def detonate_nuke(target_file=None, target_page=None):
                     VALUES (?, ?, ?, ?, ?)
                 """, (
                     f"{file} (Pg {page})",
-                    vote.subject,
-                    vote.motion_by,
-                    vote.seconded_by,
-                    f"{vote.outcome.upper()} | Ayes: {len(vote.ayes)} | Nays: {len(vote.nays)} | Abstains: {len(vote.abstains)}"
+                    safe_subject,
+                    safe_motion,
+                    safe_second,
+                    f"{safe_outcome} | Ayes: {len(vote.ayes)} | Nays: {len(vote.nays)} | Abstains: {len(vote.abstains)}"
                 ))
                 print("  -> [VAULTED TO SQLITE]")
                 print("-" * 50)
                 
             vault_conn.commit()
             
-            # --- STATE TRACKER LOGGING ---
-            # Mark the page as successfully processed so it won't be hit again on future runs
+            # State Tracker
             cursor.execute("UPDATE extracted_text SET ai_processed = 1 WHERE id = ?", (row_id,))
             conn.commit()
             
