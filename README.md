@@ -76,7 +76,7 @@ Required for zero-cost, localized NLP and structured data extraction.
 
 ```powershell
 irm https://ollama.com/install.ps1 | iex
-ollama run llama3.1
+ollama run llama3.2
 ```
 
 ---
