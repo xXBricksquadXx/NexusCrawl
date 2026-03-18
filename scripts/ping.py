@@ -4,12 +4,12 @@ from openai import OpenAI
 # Connect directly to the local background server
 client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
 
-print("[PING] Requesting ACK from Llama 3.1...")
+print("[PING] Requesting ACK from Llama 3.2...")
 start = time.time()
 
 try:
     response = client.chat.completions.create(
-        model="llama3.1",
+        model="llama3.2",
         messages=[{"role": "user", "content": "Respond with exactly one word: ACK."}],
         max_tokens=10,
     )

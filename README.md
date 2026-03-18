@@ -22,6 +22,7 @@ NexusCrawl utilizes a highly concurrent, hybrid event loop:
 - **Dual-Routing SQL Exporter:** Automatically routes extracted datasets into a local `nexus_database.db` SQLite database. It handles both raw web payloads (JSON row data) and refined intelligence models (parsed budget lines and meeting votes) simultaneously.
 - **Structural PDF Exploiter & OCR Fallback:** An offline, regex-hardened parser (`pdfplumber`) that rips tabular financial data from digital PDFs. If a document is a scanned "ghost" image, it automatically routes the file through a local Tesseract/Poppler OCR pipeline to force text extraction.
 - **Offline LLM Structuring:** Utilizes local, offline AI models (via Ollama) and `instructor` to read chaotic OCR text dumps and reconstruct them into mathematically perfect, structured Pydantic models (e.g., identifying specific parliamentary votes, motions, and financial impacts).
+- **Stateful AI Checkpointing:** Built-in SQLite state tracking ensures that long-running, CPU-bound LLM operations never repeat work. If the pipeline is paused or encounters a fatal edge case, it resumes exactly where it left off, bypassing previously completed pages.
 - **Stream Interceptor:** Offloads HLS/Blob streams to a background `yt-dlp` threading pipeline, automatically utilizing FFmpeg to decrypt and stitch streaming video chunks into native `.mp4` files.
 
 ---
@@ -111,7 +112,13 @@ python parsers/pdf_parser.py
 
 ### 2. Detonate the NLP Nuke (Structured AI Extraction)
 
+_Feed the raw OCR text into the local llama3.2 model to extract structured parliamentary roll-call votes. The engine automatically skips previously processed pages._
+
 ```bash
+# Run a targeted extraction on a specific page
+python scripts/nlp_nuke.py --file "20Oct25_22c877.pdf" --page 59
+
+# Execute a mass extraction across all unprocessed targets
 python scripts/nlp_nuke.py
 ```
 
