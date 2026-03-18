@@ -35,3 +35,6 @@ Thumbs.db
 
 # 6. Temporary / Scratchpad Scripts
 #inspect_*.py
+
+# 7. OCR & Local Binaries
+poppler/

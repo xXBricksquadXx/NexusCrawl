@@ -4,7 +4,7 @@
 
 # NexusCrawl
 
-An asynchronous, dual-transmission data mining, historical archival, and web reconnaissance engine. Built for civic audits, large-scale dataset extraction, deep media preservation, and source code cloning.
+An asynchronous, dual-transmission data mining, historical archival, and web reconnaissance engine. Built for civic audits, large-scale dataset extraction, deep media preservation, and offline AI-driven intelligence structuring.
 
 ---
 
@@ -19,8 +19,9 @@ NexusCrawl utilizes a highly concurrent, hybrid event loop:
 
 - **Exponential Backoff Shield:** A built-in `RetryMiddleware` that intercepts HTTP `429` (Rate Limit) and HTTP `403` (Forbidden) server drops, pauses the specific worker, and gracefully retries the connection without killing the primary crawl.
 - **Asynchronous File Streaming:** Utilizes `aiofiles` to prevent desktop RAM bottlenecks. Data is streamed directly to disk whether it is a `.jsonl` dictionary string, a cloned `.css` file, or a massive binary.
-- **Dual-Routing SQL Exporter:** Automatically routes extracted datasets into a local `nexus_database.db` SQLite database. It handles both raw web payloads (JSON row data) and refined intelligence models (like parsed budget lines and meeting votes) simultaneously.
-- **Structural PDF Exploiter:** An offline, regex-hardened parser (`pdfplumber`) that bypasses phantom gridlines and watermark interference to rip tabular financial data and unstructured meeting minutes directly from downloaded government PDFs.
+- **Dual-Routing SQL Exporter:** Automatically routes extracted datasets into a local `nexus_database.db` SQLite database. It handles both raw web payloads (JSON row data) and refined intelligence models (parsed budget lines and meeting votes) simultaneously.
+- **Structural PDF Exploiter & OCR Fallback:** An offline, regex-hardened parser (`pdfplumber`) that rips tabular financial data from digital PDFs. If a document is a scanned "ghost" image, it automatically routes the file through a local Tesseract/Poppler OCR pipeline to force text extraction.
+- **Offline LLM Structuring:** Utilizes local, offline AI models (via Ollama) and `instructor` to read chaotic OCR text dumps and reconstruct them into mathematically perfect, structured Pydantic models (e.g., identifying specific parliamentary votes, motions, and financial impacts).
 - **Stream Interceptor:** Offloads HLS/Blob streams to a background `yt-dlp` threading pipeline, automatically utilizing FFmpeg to decrypt and stitch streaming video chunks into native `.mp4` files.
 
 ---
@@ -44,101 +45,97 @@ NexusCrawl utilizes a highly concurrent, hybrid event loop:
 pip install -r requirements.txt
 ```
 
-## 2. Install Headless Chromium (Required for Playwright)
+## 2. Install Headless Chromium & FFmpeg
+
+Required for Playwright rendering and media stream stitching. Run these in an Administrator PowerShell:
 
 ```bash
 playwright install chromium
+winget install Gyan.FFmpeg
 ```
 
-## 3. Install FFmpeg (Required for Media Archival/Stream Stitching)
+## 3. Install the OCR Engine (Tesseract & Poppler)
 
-_Windows (via winget)_:
+To process scanned, non-digital PDFs, NexusCrawl requires Tesseract and Poppler binaries locally.
 
-```bash
-winget install Gyan.FFmpeg
+### Global Tesseract Install (Admin PowerShell)
+
+```powershell
+winget install -e --id UB-Mannheim.TesseractOCR
+```
+
+### Local Poppler Setup
+
+- Download the latest Poppler Windows release zip from `oschwartz10612/poppler-windows`.
+- Extract the core folder directly into the root of this repository and rename it to `poppler`.
+- Ensure the path `poppler/Library/bin/pdftoppm.exe` exists.
+
+## 4. Install Offline AI Engine (Ollama)
+
+Required for zero-cost, localized NLP and structured data extraction.
+
+```powershell
+irm https://ollama.com/install.ps1 | iex
+ollama run llama3.1
 ```
 
 ---
 
 # Execution Commands
 
-NexusCrawl is driven entirely via the CLI using `main.py`.
+NexusCrawl is driven entirely via the CLI using `main.py` and modular scripts.
 
-## Run a spider on its default hardcoded target
+## The Crawler Operations
+
+Run a spider on its default hardcoded target:
 
 ```bash
 python main.py --spider table_miner
 ```
 
-## Override the default target with a custom URL
+Override the default target with a custom URL:
 
 ```bash
-python main.py --spider foia_hunter --url "https://www.justice.gov/oip/foia-library"
+python main.py --spider foia_hunter --url "https://gilescountytn.gov/"
 ```
 
-## Execute a Web Reconnaissance clone
+---
 
-```bash
-python main.py --spider web_recon --url "https://target-domain.com"
-```
+## The Intelligence Operations
 
-## Extract Intelligence from Downloaded PDFs (Offline Parsing)
-
-Run the mass-exploitation parser across all PDFs in the `/media` directory to extract financial ledgers and meeting minutes:
+### 1. Extract Raw Intelligence & Budgets from PDFs
 
 ```bash
 python parsers/pdf_parser.py
 ```
 
-_Target a specific document to verify the layout heuristics before executing a mass extraction:_
+### 2. Detonate the NLP Nuke (Structured AI Extraction)
 
 ```bash
-python parsers/pdf_parser.py --file "FY 24-25 Budget.pdf"
+python scripts/nlp_nuke.py
 ```
 
-## Query the Intelligence Vault (Mass Text Search)
-
-_Scan the extracted text of all downloaded documents simultaneously for specific keywords, returning a 60-character context window around the target phrase_:
+### 3. Generate an Executive Audit Briefing
 
 ```bash
-python scripts/search_intel.py --keyword "Opioid"
+# Summarize a specific document
+python scripts/intel_summary.py --file "Minutes_3b8527.pdf"
+
+# Generate a global briefing
+python scripts/intel_summary.py
 ```
 
-```bash
-python scripts/search_intel.py --keyword "Approved"
-```
-
-## Generate an Executive Threat Matrix (Automated Audit)
-
-Scan the parsed intelligence database for high-value threat indicators (e.g., fraud, misappropriation, malfeasance, deficit) and automatically generate a formatted Markdown or CSV briefing. You can run a global sweep or target a specific municipality.
-
-```bash
-# Target a specific county and widen the context window to 600 characters
-python scripts/intel_summary.py --target "Giles" --format md --context 600
-```
-
-```bash
-# Execute a global sweep across all extracted files and export to CSV
-python scripts/intel_summary.py --format csv
-```
-
-## Export Intelligence to CSV for Visualization
-
-Dump the relational SQLite data into flat `.csv` files for Excel/Tableau visualization and financial delta calculations:
+### 4. Export Intelligence to CSV
 
 ```bash
 python scripts/export_csv.py
 ```
 
-_(This generates financial_audit_export.csv and raw_text_export.csv in the root directory)._
-
 ---
 
 # Data Output Structure
 
-Running the framework will automatically generate the following local directories based on the pipelines engaged:
-
-```text
+```
 /nexus_database.db
 /parsed_intel.db
 /civic_audit_data.jsonl
@@ -146,86 +143,68 @@ Running the framework will automatically generate the following local directorie
 /recon_vault/
 ```
 
-### `/nexus_database.db`
+## `/nexus_database.db`
 
 Relational SQLite database containing structured, queryable extractions:
 
 - `civic_records` & `table_records` (Live crawler payloads)
-
 - `budget_items` & `meeting_votes` (Refined intelligence extracted from PDFs)
 
-### `/parsed_intel.db`
+## `/parsed_intel.db`
 
-Secondary SQLite database housing bulk analytical data ripped from documents:
+Secondary SQLite database housing bulk analytical data:
 
 - `extracted_tables` (Raw tabular matrices wrapped in JSON)
+- `extracted_text` (Raw, searchable paragraph text)
 
-- `extracted_text` (Raw, searchable paragraph text for policy and agenda tracking)
+## `/media/`
 
-/civic_audit_data.jsonl
+Stores downloaded binary files (Images, Videos, PDFs).
 
-### `/civic_audit_data.jsonl`
+## `/recon_vault/`
 
-Flat JSON Lines file for structured table data and text extraction.
-
-### `/media/`
-
-Stores binary files such as:
-
-- Images
-- Videos
-- PDFs
-- CSV datasets
-- `/media/streams/`: High-resolution `.mp4` files intercepted and stitched via `yt-dlp`.
-
-### `/recon_vault/`
-
-Cloned website source code organized by target domain and file type:
-
-```
-/recon_vault
-    /domain-name
-        /html
-        /css
-        /js
-```
+Cloned website source code organized by target domain and file type.
 
 ---
 
 # Operational Use Cases
 
-NexusCrawl is designed to automate the heavy lifting of civic audits and web reconnaissance. Here is how the pipelines stack to create actionable intelligence:
+## 1. The Fiscal Audit (FOIA Hunter + PDF Exploiter)
 
-### 1. The Fiscal Audit (FOIA Hunter + PDF Exploiter)
+**Objective:** Compare year-over-year county budget allocations.
 
-**Objective:** Compare year-over-year county budget allocations without manually reading hundreds of pages.
 **Execution:**
 
-1. Run `foia_hunter` against the local government portal to strip all hidden PDFs (Budgets, Strategic Plans, Minutes).
-2. Execute the `pdf_parser.py` offline to rip the unstructured gridlines and dump the raw account codes and dollar amounts into the SQLite database.
-3. Export the database to CSV to instantly visualize anomalies or missing funds between FY24 and FY25.
+- Run `foia_hunter` against a government portal.
+- Execute `pdf_parser.py` to extract financial data.
+- Export to CSV for visualization.
 
-### 2. The Legislative Tracker (Intelligence Search)
+## 2. The Parliamentary Extractor (The NLP Nuke)
 
-**Objective:** Track the timeline of a specific contract, grant, or committee vote across a massive dump of unstandardized meeting minutes.
+**Objective:** Track voting records across meeting minutes.
+
 **Execution:**
 
-1. Run the mass extraction parser to dump the raw text of all PDFs into `parsed_intel.db`.
-2. Execute `search_intel.py --keyword "Agri-Park"` to instantly pull every motion, second, and approval related to the project, tagged with the exact source file and page number.
+- Extract raw text into `parsed_intel.db`.
+- Run `nlp_nuke.py` with Ollama.
+- Output structured JSON of motions and votes.
 
-### 3. The Digital Preservation (Web Recon + Media Archive)
+## 3. The Executive Synthesizer (Intel Summary)
 
-**Objective:** Clone a target's web infrastructure or archive streaming evidence before it is taken offline.
+**Objective:** Generate high-level summaries of operations and finances.
+
 **Execution:**
 
-1. Run `web_recon` to clone the HTML/CSS/JS architecture locally.
-2. Run `media_archive` to intercept the HLS/Blob streams via `yt-dlp` and stitch them into permanent local `.mp4` files.
+- Run `intel_summary.py`.
+- Output `Executive_Audit_Briefing.md`.
 
-### 4. The Automated Threat Matrix (Intel Summary)
+## 4. The Digital Preservation (Web Recon + Media Archive)
 
-**Objective:** Instantly locate instances of fraud, malfeasance, or unauthorized spending across thousands of audit reports without manual reading.
+**Objective:** Clone infrastructure and archive media before removal.
+
 **Execution:**
 
-1. Run `intel_summary.py` against the `parsed_intel.db` to scan for predefined legal and financial threat indicators.
-2. Pass the `--target` flag to isolate a specific county or department.
-3. Output a structured Executive Briefing detailing the exact file, page, and paragraph context of the anomaly.
+- Run `web_recon` for site cloning.
+- Run `media_archive` for stream capture and `.mp4` generation.
+
+---

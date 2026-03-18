@@ -7,6 +7,8 @@ import asyncio
 import argparse
 import re
 import pdfplumber
+import pytesseract
+from pdf2image import convert_from_path
 from models import ParsedTable, ParsedText, BudgetLineItem
 from core.pipeline import ParsedIntelPipeline, SQLitePipeline
 
@@ -16,6 +18,9 @@ class PDFExploiter:
         self.media_dir = media_dir
         self.intel_pipeline = ParsedIntelPipeline()
         self.sql_pipeline = SQLitePipeline()
+        pytesseract.pytesseract.tesseract_cmd = (
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+        )
 
     def _sanitize_string(self, text: str) -> str:
         """Removes stray watermark letters (like 'R', 'D', 'F') and cleans whitespace."""
@@ -34,6 +39,23 @@ class PDFExploiter:
             with pdfplumber.open(filepath) as pdf:
                 for page_num, page in enumerate(pdf.pages, start=1):
                     text = page.extract_text()
+                    if not text or not text.strip():
+                        print(
+                            f"  -> [OCR TRIGGERED] No digital text on {filename} (Page {page_num})."
+                        )
+                        try:
+                            images = convert_from_path(
+                                filepath,
+                                first_page=page_num,
+                                last_page=page_num,
+                                poppler_path=r"C:\Users\colby\OneDrive\Desktop\NexusCrawl\poppler\Library\bin",
+                            )
+                            if images:
+                                text = pytesseract.image_to_string(images[0])
+                        except Exception as ocr_e:
+                            print(
+                                f"  -> [OCR ERROR] Failed to run Tesseract/Poppler: {ocr_e}"
+                            )
                     if text and text.strip():
                         await self.intel_pipeline.process_item(
                             ParsedText(
