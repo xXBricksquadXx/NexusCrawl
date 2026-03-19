@@ -42,3 +42,5 @@ poppler/
 
 # 8. Scratch Pad Scripts
 tactical_analysis.py
+dossier.py
+deep_tripwire.py

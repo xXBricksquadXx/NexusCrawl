@@ -31,9 +31,18 @@ class CivicAuditSpider(BaseSpider):
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
             page = await context.new_page()
+            await page.route(
+                "**/*",
+                lambda route: (
+                    route.abort()
+                    if route.request.resource_type
+                    in ["image", "media", "font", "stylesheet"]
+                    else route.continue_()
+                ),
+            )
             try:
                 await page.goto(
-                    current_url, wait_until="domcontentloaded", timeout=45000
+                    current_url, wait_until="domcontentloaded", timeout=60000
                 )
                 viewstate_count = await page.locator(
                     "input[name='__VIEWSTATE']"
