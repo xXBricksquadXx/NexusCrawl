@@ -104,13 +104,25 @@ python main.py --spider foia_hunter --url "https://gilescountytn.gov/"
 
 ## The Intelligence Operations
 
+> **Note:** The following scripts are provided as highly specialized examples of how to query and structure the `nexus_database.db` vault. They are currently configured for civic audits (extracting budgets, roll-call votes, and parliamentary motions). However, because the core NexusCrawl engine structures raw data into an offline SQLite database, you can easily rewrite these intelligence scripts to audit any domain (e.g., corporate ledgers, medical abstracts, supply chain manifests, etc.) by simply changing the SQL queries and LLM prompts.
+
 ### 1. Extract Raw Intelligence & Budgets from PDFs
+
+Run the mass-exploitation parser across all downloaded PDFs to extract raw text and structured financial ledgers into the local database.
 
 ```bash
 python parsers/pdf_parser.py
 ```
 
-### 2. Detonate the NLP Nuke (Structured AI Extraction)
+### 2. Multi-Vector Intelligence Sweeps
+
+_Execute a regex-backed SQL hunt across the entire OCR database for specific keywords or aliases (e.g., tracking down hidden tax hikes or specific town funding)._
+
+```bash
+python scripts/search_intel.py --keywords "wheel tax" "vehicle privilege tax" "registration fee"
+```
+
+### 3. Detonate the NLP Nuke (Structured AI Extraction)
 
 _Feed the raw OCR text into the local llama3.2 model to extract structured parliamentary roll-call votes. The engine automatically skips previously processed pages._
 
@@ -122,7 +134,9 @@ python scripts/nlp_nuke.py --file "20Oct25_22c877.pdf" --page 59
 python scripts/nlp_nuke.py
 ```
 
-### 3. Generate an Executive Audit Briefing
+### 4. Generate an Executive Audit Briefing
+
+_Command the offline AI to synthesize the raw parliamentary data into a high-level summary of overarching votes, financial highlights, and contracts._
 
 ```bash
 # Summarize a specific document
@@ -132,7 +146,7 @@ python scripts/intel_summary.py --file "Minutes_3b8527.pdf"
 python scripts/intel_summary.py
 ```
 
-### 4. Export Intelligence to CSV
+### 5. Export Intelligence to CSV
 
 ```bash
 python scripts/export_csv.py

@@ -15,6 +15,7 @@ recon_vault/
 *.jsonl
 civic_audit_data.jsonl
 archive.jsonl
+Executive_Audit_Briefing.md
 
 # 3. Environment Variables & Secrets
 .env
@@ -38,3 +39,6 @@ Thumbs.db
 
 # 7. OCR & Local Binaries
 poppler/
+
+# 8. Scratch Pad Scripts
+tactical_analysis.py

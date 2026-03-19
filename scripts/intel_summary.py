@@ -3,66 +3,89 @@ import argparse
 import os
 import instructor
 from openai import OpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 
 client = instructor.from_openai(
     OpenAI(
         base_url="http://localhost:11434/v1",
         api_key="ollama",
+        timeout=600.0,
+        max_retries=0,
     ),
     mode=instructor.Mode.JSON,
 )
 
+
 class CivicBriefing(BaseModel):
-    executive_summary: str
-    voting_actions: List[str]
-    financial_highlights: List[str]
-    contracts_and_grants: List[str]
+    executive_summary: str = Field(
+        description="A 2-3 paragraph high-level summary of the meeting."
+    )
+    voting_actions: List[str] = Field(
+        default=[],
+        description="An array of simple text strings. Each string is one bullet point summarizing a key vote.",
+    )
+    financial_highlights: List[str] = Field(
+        default=[],
+        description="An array of simple text strings highlighting budget items.",
+    )
+    contracts_and_grants: List[str] = Field(
+        default=[],
+        description="An array of simple text strings highlighting contracts.",
+    )
+
 
 def generate_briefing(target_file=None, output_file="Executive_Audit_Briefing.md"):
-    db_path = "parsed_intel.db"
+    db_path = "nexus_database.db"
     if not os.path.exists(db_path):
-        print(f"[ERROR] {db_path} not found. Run pdf_parser.py first.")
+        print(f"[ERROR] {db_path} not found. Run nlp_nuke.py first.")
         return
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
+    query = (
+        "SELECT source_file, date, motion_by, seconded_by, outcome FROM meeting_votes"
+    )
+    params = []
     if target_file:
-        cursor.execute(
-            "SELECT source_file, content FROM extracted_text WHERE source_file LIKE ?",
-            (f"%{target_file}%",),
-        )
-    else:
-        cursor.execute("SELECT source_file, content FROM extracted_text")
+        query += " WHERE source_file LIKE ?"
+        params.append(f"%{target_file}%")
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
     if not rows:
-        print(f"[RESULT] No data found for target: {target_file}")
+        print(f"[RESULT] No structured vote data found for target.")
         return
     documents = {}
-    for file, content in rows:
-        if file not in documents:
-            documents[file] = []
-        documents[file].append(content)
+    for file_ref, subject, motion, second, outcome in rows:
+        base_file = file_ref.split(" (Pg ")[0] if " (Pg " in file_ref else file_ref
+        if base_file not in documents:
+            documents[base_file] = []
+        record = f"Subject: {subject} | Motion: {motion} | Second: {second} | Result: {outcome}"
+        documents[base_file].append(record)
     print(
         f"[ANALYSIS] Generating Executive Briefings for {len(documents)} documents..."
     )
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("# Executive Audit Briefing\n\n")
-        for file, text_blocks in documents.items():
+        for file, records in documents.items():
             print(f"\n[SYNTHESIZING] {file}...")
-            full_text = "\n".join(text_blocks)
-            safe_text = full_text[:20000]
+            structured_text = "\n".join(records)
             try:
                 intel = client.chat.completions.create(
-                    model="llama3.1",
+                    model="llama3.2",
                     response_model=CivicBriefing,
                     messages=[
                         {
                             "role": "system",
-                            "content": "You are a forensic civic auditor. Synthesize this raw document into a high-level executive briefing. Focus on overarching roll call votes, financial allocations, budget shortfalls, and contracts. Do not hallucinate.",
+                            "content": (
+                                "You are a forensic civic auditor. Synthesize this structured voting ledger into a high-level executive briefing. "
+                                "CRITICAL INSTRUCTION: You MUST output flat arrays of strings for the bullet point sections. "
+                                "ABSOLUTELY NO NESTED DICTIONARIES. "
+                                'Example of VALID format: {"voting_actions": ["Approved $5k for roads (Carried, 15-0)", "Tabled the wheel tax (Failed)"]} '
+                                'Example of INVALID format: {"voting_actions": [{"motion": "roads", "result": "carried"}]} -> THIS WILL CRASH THE SYSTEM.'
+                            ),
                         },
-                        {"role": "user", "content": safe_text},
+                        {"role": "user", "content": structured_text},
                     ],
                 )
                 f.write(f"## 📄 Document: {file}\n\n")
@@ -86,6 +109,7 @@ def generate_briefing(target_file=None, output_file="Executive_Audit_Briefing.md
             except Exception as e:
                 print(f"[ERROR] LLM Failed to synthesize {file}: {e}")
     print(f"\n[SUCCESS] Executive Briefing saved to: {output_file}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
